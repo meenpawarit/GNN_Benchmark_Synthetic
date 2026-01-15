@@ -9,17 +9,12 @@ class GAT(nn.Module):
         self.dropout = dropout
         self.layers = nn.ModuleList()
         
-        # Input layer
-        # Output dim will be hidden_channels * heads
         self.layers.append(GATConv(in_channels, hidden_channels, heads=heads, dropout=dropout))
         
         # Hidden layers
         for _ in range(num_layers - 2):
             self.layers.append(GATConv(hidden_channels * heads, hidden_channels, heads=heads, dropout=dropout))
             
-        # Output layer
-        # Usually for the final layer we might want to average heads or use 1 head.
-        # Here we follow standard practice: Concat hidden, Average final.
         self.layers.append(GATConv(hidden_channels * heads, out_channels, heads=1, concat=False, dropout=dropout))
 
     def forward(self, x, edge_index):

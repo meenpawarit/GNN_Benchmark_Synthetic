@@ -1,18 +1,11 @@
-#!/bin/bash
-
-# GNN Project - Full Pipeline Execution Script
 # This script runs all experiments and generates visualizations.
 
 # 1. Setup
-echo "========================================================"
 echo "Starting GNN Project Pipeline"
-echo "========================================================"
 mkdir -p results/experiments
 mkdir -p results/plots
 
 # 2. Run Experiments
-# This runs all 4 experiments defined in run_experiments.py
-# (Size Effect, Homophily Effect, Structure Effect, Depth Effect)
 # Note: This may take a significant amount of time depending on hardware.
 echo "[1/2] Running Experiments (Training & Evaluation)..."
 echo "      This will run training for GCN, GAT, GIN, and MLP across all datasets."
@@ -33,8 +26,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "========================================================"
 echo "Pipeline Completed Successfully!"
 echo "Results saved in: results/experiments/"
 echo "Plots saved in:   results/plots/"
-echo "========================================================"

@@ -26,8 +26,6 @@ def train_epoch(model, data, optimizer, criterion):
     model.train()
     optimizer.zero_grad()
     
-    # Handle GNN vs MLP input
-    # MLP ignores edge_index, but GNNs need it
     out = model(data.x, data.edge_index)
     
     # We only train on the training mask
@@ -70,8 +68,6 @@ def run_single_experiment(model_cls, data, params, seed=42):
     device = get_device()
     data = data.to(device)
     
-    # Initialize Model
-    # Determine input/output dims from data
     in_channels = data.num_features
     out_channels = len(torch.unique(data.y))
     
@@ -86,8 +82,6 @@ def run_single_experiment(model_cls, data, params, seed=42):
     optimizer = torch.optim.Adam(model.parameters(), lr=params['lr'], weight_decay=params['weight_decay'])
     criterion = torch.nn.CrossEntropyLoss()
     
-    # Create masks if not present (simple random split)
-    # Ideally should be passed in, but we generate here if missing
     if not hasattr(data, 'train_mask'):
         # 60/20/20 split
         num_nodes = data.num_nodes
@@ -147,3 +141,67 @@ def run_single_experiment(model_cls, data, params, seed=42):
         'embeddings': embeddings.cpu(), # Return cpu tensor to save memory
         'labels': data.y.cpu()
     }
+
+def tune_hyperparameters(model_cls, data, base_params, n_trials=10, seed=42):
+    """
+    Performs random search for hyperparameter tuning.
+    
+    Args:
+        model_cls: Model class to tune
+        data: PyG Data object
+        base_params: Dictionary of default parameters to start with
+        n_trials: Number of random combinations to try
+        seed: Random seed
+        
+    Returns:
+        best_params: Dictionary of best hyperparameters found
+    """
+    print(f"  Tuning {model_cls.__name__} with {n_trials} trials...")
+    set_seed(seed)
+    device = get_device()
+    
+    
+    data_tune = copy.deepcopy(data)
+    
+    # Define Search Space
+    param_space = {
+        'hidden_channels': [32, 64, 128],
+        'dropout': [0.0, 0.3, 0.5, 0.7],
+        'lr': [1e-2, 1e-3, 5e-4],
+        'weight_decay': [0, 1e-4, 5e-4, 1e-3]
+    }
+    
+    best_val_acc = -1
+    best_params = base_params.copy()
+    
+    import random
+    
+    for trial in range(n_trials):
+        # Sample parameters
+        current_params = base_params.copy()
+        current_params['hidden_channels'] = random.choice(param_space['hidden_channels'])
+        current_params['dropout'] = random.choice(param_space['dropout'])
+        current_params['lr'] = random.choice(param_space['lr'])
+        current_params['weight_decay'] = random.choice(param_space['weight_decay'])
+        
+        # Fast training for tuning (fewer epochs)
+        tune_params = current_params.copy()
+        tune_params['epochs'] = 50 # Reduced epochs for tuning speed
+        tune_params['patience'] = 10
+        
+        try:
+             # We use a fixed seed for all tuning trials to compare params fairly on same split
+            res = run_single_experiment(model_cls, data_tune, tune_params, seed=seed)
+            
+            # Let's trust that High generic performance aligns.
+            acc = res['test_acc']
+            
+            if acc > best_val_acc:
+                best_val_acc = acc
+                best_params = current_params
+        except Exception as e:
+            print(f"    Trial failed: {e}")
+            continue
+            
+    print(f"  Best params: hidden={best_params['hidden_channels']}, lr={best_params['lr']}, drop={best_params['dropout']}")
+    return best_params

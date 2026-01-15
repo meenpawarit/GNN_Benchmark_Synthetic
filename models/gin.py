@@ -9,8 +9,6 @@ class GIN(nn.Module):
         self.dropout = dropout
         self.layers = nn.ModuleList()
         
-        # GIN requires an MLP for the aggregation step
-        # Layer 1
         mlp1 = nn.Sequential(
             nn.Linear(in_channels, hidden_channels),
             nn.ReLU(),
@@ -27,10 +25,6 @@ class GIN(nn.Module):
             )
             self.layers.append(GINConv(mlp_hidden))
             
-        # Output Layer
-        # Standard GIN usage: We usually get node embeddings and then use a linear classifier
-        # But GINConv expects an MLP. So we can keep it as GINConv or just add a final Linear layer.
-        # Here we follow the pattern: GINConv -> GINConv -> ... -> Linear Classifier
         
         mlp_last = nn.Sequential(
             nn.Linear(hidden_channels, hidden_channels),

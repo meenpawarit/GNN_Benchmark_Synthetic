@@ -14,7 +14,7 @@ def generate_node_features(start_idx, end_idx, feature_dim, mean_shift=0.0):
     num_nodes = end_idx - start_idx
     # Base standard normal distribution
     features = torch.randn(num_nodes, feature_dim)
-    # Shift mean if specified (simple way to signal class info via features)
+    # Shift mean if specified 
     features += mean_shift
     return features
 
@@ -39,18 +39,11 @@ def generate_sbm_graph(num_nodes, num_classes, p_intra, p_inter, feature_dim=16)
     # Create Data object
     data = from_networkx(G_nx)
     
-    # Assign Features and Labels
-    # In SBM from networkx, nodes are ordered by block 0, 1, 2...
-    # We need to assign labels and features accordingly
     x_list = []
     y_list = []
     
     current_idx = 0
     for class_id, size in enumerate(sizes):
-        # Create features for this block
-        # We shift the mean of features based on class_id to make them discriminative
-        # e.g. class 0 mean=0, class 1 mean=1, etc.
-        # This is a simple assumption; we can adjust 'difficulty' later.
         feat = generate_node_features(0, size, feature_dim, mean_shift=class_id * 1.0)
         x_list.append(feat)
         
@@ -76,7 +69,7 @@ def generate_er_graph(num_nodes, p, num_classes=2, feature_dim=16):
     labels = torch.randint(0, num_classes, (num_nodes,))
     data.y = labels
     
-    # Features correlated with labels (otherwise it's impossible to learn!)
+    # Features correlated with labels
     x_list = []
     for i in range(num_nodes):
         label = labels[i].item()
@@ -112,13 +105,11 @@ def generate_ba_graph(num_nodes, m, num_classes=2, feature_dim=16):
     return data
 
 if __name__ == "__main__":
-    # 1. Size Effect (Scalability)
-    # Goal: See how training time/memory scales with N. Keep homophily/density roughly constant.
     print("--- Generating Size Effect Dataset ---")
     size_dir = "data/synthetic/size_effect"
     os.makedirs(size_dir, exist_ok=True)
     
-    sizes = [100, 500, 1000, 2000, 5000] # Can add 10000 if machine permits
+    sizes = [100, 500, 1000, 2000, 5000]
     for n in sizes:
         # Standard SBM with reasonable homophily
         data = generate_sbm_graph(num_nodes=n, num_classes=5, p_intra=0.05, p_inter=0.005)
@@ -126,16 +117,11 @@ if __name__ == "__main__":
         print(f"Saved sbm_{n}.pt")
 
 
-    # 2. Homophily Effect (Edge Complexity)
-    # Goal: See how GNNs perform when edges don't match labels (heterophily). Fixed N.
     print("\n--- Generating Homophily Effect Dataset ---")
     hom_dir = "data/synthetic/homophily_effect"
     os.makedirs(hom_dir, exist_ok=True)
     
     fixed_n = 1000
-    # H = p_intra / (p_intra + (num_classes - 1) * p_inter) (approx)
-    # We want to vary "homophily strength". 
-    # Let's verify p_intra vs p_inter ratios explicitly.
     
     configs = [
         ("high", 0.1, 0.001),   # Strong homophily
@@ -150,24 +136,18 @@ if __name__ == "__main__":
         print(f"Saved sbm_hom_{name}.pt")
 
 
-    # 3. Structure Effect (Hubs vs Uniform)
-    # Goal: Compare ER (Uniform) vs BA (Hubs). Fixed N.
-    # CRITICAL: We should try to match the Average Degree so the comparison is fair (density controlled).
     print("\n--- Generating Structure Effect Dataset ---")
     struct_dir = "data/synthetic/structure_effect"
     os.makedirs(struct_dir, exist_ok=True)
     
     fixed_n = 1000
     m_val = 5 # BA parameter (each new node adds 5 edges)
-    # Avg degree in BA approx 2*m = 10.
     
     # Generate BA
     ba_data = generate_ba_graph(num_nodes=fixed_n, m=m_val, num_classes=5)
     torch.save(ba_data, os.path.join(struct_dir, "graph_ba_hubs.pt"))
     print("Saved graph_ba_hubs.pt")
     
-    # Generate ER with matching avg degree ~10
-    # p = avg_degree / (n-1) = 10 / 999 ~= 0.01
     p_matched = (2 * m_val) / (fixed_n - 1)
     er_data = generate_er_graph(num_nodes=fixed_n, p=p_matched, num_classes=5)
     torch.save(er_data, os.path.join(struct_dir, "graph_er_uniform.pt"))

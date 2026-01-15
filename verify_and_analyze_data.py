@@ -26,12 +26,7 @@ def plot_adjacency_heatmap(data, title, save_path):
     sorted_indices = torch.argsort(data.y)
     edge_index = data.edge_index
     
-    # Create a sparse matrix or just plot points for large graphs
-    # For visualization, we can just scatter plot the edges
-    # Mapping old indices to new sorted indices
     
-    # This is a bit complex to map efficiently for large N, 
-    # but for visualization we can reorder the adjacency matrix.
     
     # Easier way: Convert to dense, reorder, plot
     if data.num_nodes > 2000:

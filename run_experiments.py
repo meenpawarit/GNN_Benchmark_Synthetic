@@ -10,9 +10,10 @@ from models.gcn import GCN
 from models.gat import GAT
 from models.gin import GIN
 from models.mlp import MLP
-from train_utils import run_single_experiment
+from models.mlp import MLP
+from train_utils import run_single_experiment, tune_hyperparameters
 
-# Hyperparameters (Fixed for fair comparison)
+# Hyperparameters 
 DEFAULT_PARAMS = {
     'hidden_channels': 64,
     'num_layers': 3,
@@ -58,7 +59,6 @@ def run_size_effect_experiment(seeds=[42, 43, 44, 45, 46]):
     
     for f in tqdm(files, desc="Datasets"):
         dataset_name = os.path.basename(f)
-        # Extract N from filename (sbm_100.pt -> 100)
         try:
             n_nodes = int(dataset_name.split('_')[1].split('.')[0])
         except:
@@ -67,16 +67,20 @@ def run_size_effect_experiment(seeds=[42, 43, 44, 45, 46]):
         data = torch.load(f, weights_only=False)
         
         for model_name, model_cls in MODELS.items():
+            
+            print(f" > Tuning {model_name} for {dataset_name}...")
+            best_params = tune_hyperparameters(model_cls, data, DEFAULT_PARAMS, n_trials=5)
+            
             run_metrics = []
             for seed in seeds:
-                res = run_single_experiment(model_cls, data, DEFAULT_PARAMS, seed)
-                # We don't save embeddings for size effect to save space
-                del res['embeddings'] 
-                del res['labels']
+                res = run_single_experiment(model_cls, data, best_params, seed)
+                if 'embeddings' in res: del res['embeddings']
+                if 'labels' in res: del res['labels']
                 run_metrics.append(res)
             
             # Average over seeds
             avg_acc = np.mean([r['test_acc'] for r in run_metrics])
+            std_acc = np.std([r['test_acc'] for r in run_metrics])
             avg_time = np.mean([r['train_time'] for r in run_metrics])
             
             entry = {
@@ -84,7 +88,9 @@ def run_size_effect_experiment(seeds=[42, 43, 44, 45, 46]):
                 'num_nodes': n_nodes,
                 'model': model_name,
                 'test_acc': avg_acc,
+                'test_acc_std': std_acc,
                 'train_time': avg_time,
+                'tuned_params': best_params,
                 'all_runs': run_metrics
             }
             summary.append(entry)
@@ -106,21 +112,30 @@ def run_homophily_effect_experiment(seeds=[42, 43, 44, 45, 46]):
         data = torch.load(f, weights_only=False)
         
         for model_name, model_cls in MODELS.items():
+            print(f" > Tuning {model_name} for {dataset_name}...")
+            best_params = tune_hyperparameters(model_cls, data, DEFAULT_PARAMS, n_trials=5)
+            
             run_metrics = []
             for seed in seeds:
-                res = run_single_experiment(model_cls, data, DEFAULT_PARAMS, seed)
+                res = run_single_experiment(model_cls, data, best_params, seed)
                 if 'embeddings' in res: del res['embeddings']
                 if 'labels' in res: del res['labels']
                 run_metrics.append(res)
             
             avg_acc = np.mean([r['test_acc'] for r in run_metrics])
+            std_acc = np.std([r['test_acc'] for r in run_metrics])
+            avg_f1 = np.mean([r['test_f1'] for r in run_metrics])
+            std_f1 = np.std([r['test_f1'] for r in run_metrics])
             
             entry = {
                 'dataset': dataset_name,
                 'config': config_name,
                 'model': model_name,
                 'test_acc': avg_acc,
-                'test_f1': np.mean([r['test_f1'] for r in run_metrics]),
+                'test_acc_std': std_acc,
+                'test_f1': avg_f1,
+                'test_f1_std': std_f1,
+                'tuned_params': best_params,
                 'all_runs': run_metrics
             }
             summary.append(entry)
@@ -139,19 +154,25 @@ def run_structure_effect_experiment(seeds=[42, 43, 44, 45, 46]):
         data = torch.load(f, weights_only=False)
         
         for model_name, model_cls in MODELS.items():
+            print(f" > Tuning {model_name} for {dataset_name}...")
+            best_params = tune_hyperparameters(model_cls, data, DEFAULT_PARAMS, n_trials=5)
+            
             run_metrics = []
             for seed in seeds:
-                res = run_single_experiment(model_cls, data, DEFAULT_PARAMS, seed)
+                res = run_single_experiment(model_cls, data, best_params, seed)
                 if 'embeddings' in res: del res['embeddings']
                 if 'labels' in res: del res['labels']
                 run_metrics.append(res)
             
             avg_acc = np.mean([r['test_acc'] for r in run_metrics])
+            std_acc = np.std([r['test_acc'] for r in run_metrics])
             
             entry = {
                 'dataset': dataset_name,
                 'model': model_name,
                 'test_acc': avg_acc,
+                'test_acc_std': std_acc,
+                'tuned_params': best_params,
                 'all_runs': run_metrics
             }
             summary.append(entry)
@@ -171,22 +192,23 @@ def run_depth_effect_experiment(seeds=[42, 43, 44, 45, 46]):
     
     summary = []
     
-    # Only test GCN, GAT, GIN (MLP is less relevant here but can be included)
     oversmoothing_models = ['GCN', 'GAT', 'GIN']
     
     for model_name in oversmoothing_models:
         model_cls = MODELS[model_name]
         
         for d in depths:
-            params = DEFAULT_PARAMS.copy()
-            params['num_layers'] = d
+            print(f" > Tuning {model_name} for depth {d}...")
+            # We fix num_layers in the tuning base
+            tune_base = DEFAULT_PARAMS.copy()
+            tune_base['num_layers'] = d
+            
+            best_params = tune_hyperparameters(model_cls, data, tune_base, n_trials=5)
             
             run_metrics = []
             for seed in seeds:
-                res = run_single_experiment(model_cls, data, params, seed)
+                res = run_single_experiment(model_cls, data, best_params, seed)
                 
-                # For the LAST experiment (Depth), let's save embeddings for the deepest model/last seed
-                # to visualize oversmoothing
                 if d == 32 and seed == seeds[-1]:
                     # Save embeddings separately to avoid massive JSON
                     save_embeddings(res['embeddings'], res['labels'], f"embeddings_{model_name}_depth32.pt")
@@ -197,11 +219,14 @@ def run_depth_effect_experiment(seeds=[42, 43, 44, 45, 46]):
                 run_metrics.append(res)
             
             avg_acc = np.mean([r['test_acc'] for r in run_metrics])
+            std_acc = np.std([r['test_acc'] for r in run_metrics])
             
             entry = {
                 'depth': d,
                 'model': model_name,
                 'test_acc': avg_acc,
+                'test_acc_std': std_acc,
+                'tuned_params': best_params,
                 'all_runs': run_metrics
             }
             summary.append(entry)

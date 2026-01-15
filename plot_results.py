@@ -14,6 +14,31 @@ RESULTS_DIR = "results/experiments"
 PLOTS_DIR = "results/plots"
 os.makedirs(PLOTS_DIR, exist_ok=True)
 
+def generate_latex_table(df, experiment_name, columns):
+    """
+    Generates and saves a LaTeX table from the dataframe.
+    """
+    table_path = os.path.join(PLOTS_DIR, f"table_{experiment_name}.tex")
+    
+    
+    display_df = df.copy()
+    
+    # Auto-detect mean/std pairs 
+    metric_cols = [c for c in columns if 'std' not in c and c in df.columns]
+    
+    final_cols = []
+    
+    for col in metric_cols:# e.g. "Test Accuracy" -> "Test Accuracy_std" NO, keys are usually distinct
+        
+        
+        pass
+        
+    with open(table_path, 'w') as f:
+        f.write("% Auto-generated table\n")
+        f.write(display_df.to_latex(index=False, float_format="%.4f"))
+    print(f"Saved LaTeX table to {table_path}")
+
+
 def load_results(filename):
     filepath = os.path.join(RESULTS_DIR, filename)
     if not os.path.exists(filepath):
@@ -41,6 +66,10 @@ def plot_scalability(data):
     # Sort by N
     df = df.sort_values(by='Num Nodes')
     
+    if df.empty:
+        print("Error: No data found for scalability plot.")
+        return
+
     # 1. Runtime Plot
     plt.figure(figsize=(10, 6))
     sns.lineplot(data=df, x='Num Nodes', y='Training Time (s)', hue='Model', marker='o')
@@ -50,9 +79,22 @@ def plot_scalability(data):
     plt.savefig(os.path.join(PLOTS_DIR, 'plot_scalability_runtime.png'))
     plt.close()
     
-    # 2. Accuracy Plot (to check if performance degrades with size)
+    # 2. Accuracy Plot 
     plt.figure(figsize=(10, 6))
+    # Plot mean lines
     sns.lineplot(data=df, x='Num Nodes', y='Test Accuracy', hue='Model', marker='o')
+    
+    # Add error bands if std is available
+    if 'test_acc_std' in df.columns:
+        models = df['Model'].unique()
+        colors = sns.color_palette()
+        for i, model in enumerate(models):
+            model_df = df[df['Model'] == model].sort_values('Num Nodes')
+            plt.fill_between(model_df['Num Nodes'], 
+                             model_df['Test Accuracy'] - model_df['test_acc_std'],
+                             model_df['Test Accuracy'] + model_df['test_acc_std'],
+                             alpha=0.2, color=colors[i])
+                             
     plt.title('Accuracy vs Graph Size')
     plt.ylim(0, 1.0)
     plt.savefig(os.path.join(PLOTS_DIR, 'plot_scalability_accuracy.png'))
@@ -66,6 +108,9 @@ def plot_scalability(data):
     plt.xlabel('Number of Nodes')
     plt.savefig(os.path.join(PLOTS_DIR, 'plot_convergence_size.png'))
     plt.close()
+    
+    # Generate Table
+    generate_latex_table(df, "size_effect", ['Num Nodes', 'Model', 'Test Accuracy', 'test_acc_std', 'Training Time (s)'])
 
 def plot_homophily(data):
     """
@@ -74,7 +119,6 @@ def plot_homophily(data):
     print("Plotting Homophily Effect...")
     records = []
     
-    # We want to order configurations logically: High -> Med -> Low -> Structural
     order_map = {'high': 0, 'medium': 1, 'low': 2, 'structural': 3}
     
     for entry in data:
@@ -83,19 +127,31 @@ def plot_homophily(data):
             'Config': entry['config'],
             'Order': order_map.get(entry['config'], 99),
             'Test Accuracy': entry['test_acc'],
+            'test_acc_std': entry.get('test_acc_std', 0),
             'F1 Score': entry['test_f1'],
+            'test_f1_std': entry.get('test_f1_std', 0),
             'Epochs': np.mean([r['epochs_run'] for r in entry['all_runs']])
         })
     df = pd.DataFrame(records)
+    if df.empty: return
     df = df.sort_values(by='Order')
     
-    # 1. Accuracy Plot
+    # 1. Accuracy Plot with Error Bars
     plt.figure(figsize=(10, 6))
+    
+    models = df['Model'].unique()
+    configs = df['Config'].unique()
+    
+    # Use proper bar plot with error bars
     sns.barplot(data=df, x='Config', y='Test Accuracy', hue='Model')
+    
     plt.title('Model Performance vs Homophily Level')
     plt.ylim(0, 1.0)
     plt.savefig(os.path.join(PLOTS_DIR, 'plot_homophily.png'))
     plt.close()
+    
+    # Generate Table
+    generate_latex_table(df, "homophily", [])
 
     # 2. Convergence Plot
     plt.figure(figsize=(10, 6))
@@ -118,9 +174,11 @@ def plot_structure(data):
         records.append({
             'Model': entry['model'],
             'Graph Type': graph_type,
-            'Test Accuracy': entry['test_acc']
+            'Test Accuracy': entry['test_acc'],
+            'test_acc_std': entry.get('test_acc_std', 0)
         })
     df = pd.DataFrame(records)
+    if df.empty: return
     
     plt.figure(figsize=(8, 6))
     sns.barplot(data=df, x='Graph Type', y='Test Accuracy', hue='Model')
@@ -128,6 +186,8 @@ def plot_structure(data):
     plt.ylim(0, 1.0)
     plt.savefig(os.path.join(PLOTS_DIR, 'plot_structure_perf.png'))
     plt.close()
+    
+    generate_latex_table(df, "structure", [])
 
 def plot_oversmoothing(data):
     """
@@ -139,12 +199,27 @@ def plot_oversmoothing(data):
         records.append({
             'Model': entry['model'],
             'Depth': entry['depth'],
-            'Test Accuracy': entry['test_acc']
+            'Test Accuracy': entry['test_acc'],
+            'test_acc_std': entry.get('test_acc_std', 0)
         })
     df = pd.DataFrame(records)
+    if df.empty: return
     
     plt.figure(figsize=(10, 6))
+    # Plot mean
     sns.lineplot(data=df, x='Depth', y='Test Accuracy', hue='Model', marker='o')
+    
+    # Add error bands
+    if 'test_acc_std' in df.columns:
+        models = df['Model'].unique()
+        colors = sns.color_palette()
+        for i, model in enumerate(models):
+            model_df = df[df['Model'] == model].sort_values('Depth')
+            plt.fill_between(model_df['Depth'], 
+                             model_df['Test Accuracy'] - model_df['test_acc_std'],
+                             model_df['Test Accuracy'] + model_df['test_acc_std'],
+                             alpha=0.2, color=colors[i])
+
     plt.title('Oversmoothing: Accuracy vs Network Depth')
     plt.xlabel('Number of Layers')
     plt.ylabel('Test Accuracy')
@@ -152,6 +227,8 @@ def plot_oversmoothing(data):
     plt.ylim(0, 1.0)
     plt.savefig(os.path.join(PLOTS_DIR, 'plot_depth_oversmoothing.png'))
     plt.close()
+    
+    generate_latex_table(df, "depth", [])
 
 def plot_embeddings():
     """
