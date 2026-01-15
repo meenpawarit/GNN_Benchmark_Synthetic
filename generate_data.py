@@ -22,7 +22,7 @@ def generate_sbm_graph(num_nodes, num_classes, p_intra, p_inter, feature_dim=16)
     """
     Generates a Stochastic Block Model graph.
     """
-    # Define block sizes (approx equal)
+    # Define block sizes
     block_size = num_nodes // num_classes
     sizes = [block_size] * num_classes
     # Handle remainder
@@ -33,7 +33,7 @@ def generate_sbm_graph(num_nodes, num_classes, p_intra, p_inter, feature_dim=16)
     for i in range(num_classes):
         probs[i][i] = p_intra
 
-    # Generate graph using NetworkX
+    # Generate graph
     G_nx = nx.stochastic_block_model(sizes, probs, seed=42)
     
     # Create Data object
@@ -84,7 +84,7 @@ def generate_ba_graph(num_nodes, m, num_classes=2, feature_dim=16):
     """
     Generates a Barabási-Albert (Power-Law) graph.
     m: number of edges to attach from a new node to existing nodes.
-    Labels assigned randomly (or could be degree-based, but we'll stick to random class for now)
+    Labels assigned randomly
     """
     G_nx = nx.barabasi_albert_graph(n=num_nodes, m=m, seed=42)
     data = from_networkx(G_nx)
@@ -105,7 +105,7 @@ def generate_ba_graph(num_nodes, m, num_classes=2, feature_dim=16):
     return data
 
 if __name__ == "__main__":
-    print("--- Generating Size Effect Dataset ---")
+    print(" Generating Size Effect Dataset ")
     size_dir = "data/synthetic/size_effect"
     os.makedirs(size_dir, exist_ok=True)
     
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         print(f"Saved sbm_{n}.pt")
 
 
-    print("\n--- Generating Homophily Effect Dataset ---")
+    print("\n Generating Homophily Effect Dataset ")
     hom_dir = "data/synthetic/homophily_effect"
     os.makedirs(hom_dir, exist_ok=True)
     
@@ -136,7 +136,7 @@ if __name__ == "__main__":
         print(f"Saved sbm_hom_{name}.pt")
 
 
-    print("\n--- Generating Structure Effect Dataset ---")
+    print("\n Generating Structure Effect Dataset ")
     struct_dir = "data/synthetic/structure_effect"
     os.makedirs(struct_dir, exist_ok=True)
     

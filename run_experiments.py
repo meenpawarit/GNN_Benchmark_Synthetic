@@ -51,7 +51,7 @@ def save_results(results, filename):
     print(f"Saved results to {filepath}")
 
 def run_size_effect_experiment(seeds=[42, 43, 44, 45, 46]):
-    print("\n--- Running Experiment 1: Size Effect ---")
+    print("\n Running Experiment 1: Size Effect ")
     data_dir = "data/synthetic/size_effect"
     files = sorted(glob.glob(os.path.join(data_dir, "*.pt")))
     
@@ -98,7 +98,7 @@ def run_size_effect_experiment(seeds=[42, 43, 44, 45, 46]):
     save_results({"experiment": "size_effect", "data": summary}, "size_effect_results.json")
 
 def run_homophily_effect_experiment(seeds=[42, 43, 44, 45, 46]):
-    print("\n--- Running Experiment 2: Homophily Effect ---")
+    print("\n Running Experiment 2: Homophily Effect ")
     data_dir = "data/synthetic/homophily_effect"
     files = sorted(glob.glob(os.path.join(data_dir, "*.pt")))
     
@@ -143,7 +143,7 @@ def run_homophily_effect_experiment(seeds=[42, 43, 44, 45, 46]):
     save_results({"experiment": "homophily_effect", "data": summary}, "homophily_effect_results.json")
 
 def run_structure_effect_experiment(seeds=[42, 43, 44, 45, 46]):
-    print("\n--- Running Experiment 3: Structure Effect ---")
+    print("\n Running Experiment 3: Structure Effect ")
     data_dir = "data/synthetic/structure_effect"
     files = sorted(glob.glob(os.path.join(data_dir, "*.pt")))
     
@@ -180,7 +180,7 @@ def run_structure_effect_experiment(seeds=[42, 43, 44, 45, 46]):
     save_results({"experiment": "structure_effect", "data": summary}, "structure_effect_results.json")
 
 def run_depth_effect_experiment(seeds=[42, 43, 44, 45, 46]):
-    print("\n--- Running Experiment 4: Depth (Oversmoothing) Effect ---")
+    print("\n Running Experiment 4: Depth (Oversmoothing) Effect ")
     # Use a medium sized SBM graph
     data_path = "data/synthetic/size_effect/sbm_1000.pt"
     if not os.path.exists(data_path):

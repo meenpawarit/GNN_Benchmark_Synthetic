@@ -126,7 +126,7 @@ def run_single_experiment(model_cls, data, params, seed=42):
     model.load_state_dict(best_model_state)
     test_acc, test_prec, test_rec, test_f1 = evaluate(model, data, data.test_mask)
     
-    # Get embeddings for visualization (optional)
+    # Get embeddings for visualization
     model.eval()
     with torch.no_grad():
         embeddings = model(data.x, data.edge_index)
@@ -138,7 +138,7 @@ def run_single_experiment(model_cls, data, params, seed=42):
         'test_f1': test_f1,
         'train_time': train_time,
         'epochs_run': epoch + 1,
-        'embeddings': embeddings.cpu(), # Return cpu tensor to save memory
+        'embeddings': embeddings.cpu(), 
         'labels': data.y.cpu()
     }
 
@@ -193,7 +193,6 @@ def tune_hyperparameters(model_cls, data, base_params, n_trials=10, seed=42):
              # We use a fixed seed for all tuning trials to compare params fairly on same split
             res = run_single_experiment(model_cls, data_tune, tune_params, seed=seed)
             
-            # Let's trust that High generic performance aligns.
             acc = res['test_acc']
             
             if acc > best_val_acc:
