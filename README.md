@@ -9,9 +9,7 @@ This project benchmarks Graph Neural Network architectures (GCN, GAT, GIN) and M
 ## Project Structure
 
 - `models/`: Implementations of GCN, GAT, GIN, MLP.
-- `data/`: Directory for synthetic datasets (generated on demand).
-- `results/`: Directory for experiment logs and plots.
-- `run_experiments.py`: Main script to execute training and evaluation.
+- `run_pipeline.sh`: Main script to execute training and evaluation.
 - `plot_results.py`: Script to generate plots and LaTeX tables from results.
 - `generate_data.py`: Script to generate the synthetic datasets.
 - `train_utils.py`: Utilities for training loops and hyperparameter tuning.
