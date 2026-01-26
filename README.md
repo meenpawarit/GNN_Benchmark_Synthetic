@@ -8,6 +8,7 @@ This project benchmarks Graph Neural Network architectures (GCN, GAT, GIN) and M
 
 ## Project Structure
 
+- `0_Report.pdf`: Report of the deliverable.
 - `models/`: Implementations of GCN, GAT, GIN, MLP.
 - `run_pipeline.sh`: Main script to execute training and evaluation.
 - `plot_results.py`: Script to generate plots and LaTeX tables from results.
